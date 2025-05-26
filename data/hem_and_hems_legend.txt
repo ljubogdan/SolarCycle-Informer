@@ -1,0 +1,1 @@
+year, month, date in fraction, north + south, north, south, deviation (north+south), deviation north, deviation south, observations (north+south), observations north, observations south, definitive/provisional
