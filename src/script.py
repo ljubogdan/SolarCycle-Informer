@@ -105,6 +105,10 @@ def load_data():
     # Remove forst and last 6 rows in df_monthly to have equal length of data in smoothed and non-smoothed data
     df_monthly = df_monthly.iloc[6:-6]
 
+    # using only monthly data from > 1960 since there is a lot of unreliable data before that
+    df_monthly = df_monthly[df_monthly.index >= '1970-01-01']
+    df_monthly_smooth = df_monthly_smooth[df_monthly_smooth.index >= '1960-01-01']
+
     return df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth
 
 def plot_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth):
@@ -221,13 +225,12 @@ def plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemis
     plt.tight_layout()  
     plt.show()
 
-
 def main():
     df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth = load_data()
 
     #plot_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
-    #plot_acf_data(df_monthly) 
-    #plot_pacf_data(df_monthly) # not same for stationary and non-stationary data
+    #plot_acf_data(df_monthly_smooth) 
+    #plot_pacf_data(df_monthly_smooth) # not same for stationary and non-stationary data
 
     # WE USED pacf for analysis of non-stationary data (great choice)
 
@@ -256,6 +259,7 @@ def main():
     #plot_stl_decomposition(df_monthly)
     #adf_test_stationarity(df_monthly['total_sunspots']) # not sure... (says stationary 100%, but we know it is not)
 
+    
     # Normalize data using Min-Max scaler 
 
     from sklearn.preprocessing import MinMaxScaler
@@ -268,26 +272,35 @@ def main():
     df_hemispheric_smooth['south_scaled'] = scaler.fit_transform(df_hemispheric_smooth[['south']])
 
     # Plot normalized data
-    #plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
+    # plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
 
     # IMPORTANT!!!:
     
     '''
     
         Since we have over 200 years of data, which is 3000+ data points, 
-        we will use only the last 1680 data points for training and testing.
+        we will use only the last 350 data points for training and testing.
 
         Older data is not relevant for the model, 
         since it is not able to capture the seasonality and trend in the data.
         It is only draining the model and making it worse.
-
-        Our Informer model is made to predict up to 120 months ahead.
     
     '''
 
-    train_data_monthly = df_monthly_smooth.iloc[-1680:-240]
-    val_data_monthly = df_monthly_smooth.iloc[-240:-120]
-    test_data_monthly = df_monthly_smooth.iloc[-120:]
+    # Creating input sequences for Informer model
+
+    '''
+
+        What are input sequences for Informer model?
+
+        Input sequences for Informer model are sequences of data points that the model uses to make predictions.
+        The model takes a sequence of data points as input and predicts the next data point in the sequence.
+        The input sequence is a sliding window of data points, where the window size is defined by the model's hyperparameters.
+        The model uses the input sequence to learn the patterns in the data and make predictions.
+
+    '''
+
+    # Defining Informer model
 
 
 
@@ -298,6 +311,3 @@ def main():
 
 if __name__ == "__main__":
     main()  
-
-
-    
