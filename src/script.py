@@ -11,7 +11,7 @@
     All thee models were not able to capture the seasonality and trend in the data.
 
     We are working with sunspot data, which is not linear and has a complex seasonality and trend.
-    
+
 '''
 
 # INFORMER MODEL
@@ -58,7 +58,7 @@ import statsmodels.api as sm
 
     (identical to the monthly total data, but with a 13-month moving average applied)
 
-    WE HAVE DATA FROM JANARY 1749 TO APRIL 2025
+    WE HAVE DATA FROM JULY 1st 1749 TO OCTOBER 1st 2024 (AFTER REMOVING FIRST AND LAST 6)
     FIRST AND LAST 6 MONTHS OF DATA IN SMOOTHED ARE MISSING (-1 in column indicates missing data) 
 
     WE HAVE HEMISPHERIC DATA FROM JANARY 1992 TO APRIL 2025
@@ -70,69 +70,139 @@ import statsmodels.api as sm
 # Plotting 4 graphs in one figure, one above the other
 # monthly total data, monthly smoothed data, hemispheric monthly total data, hemispheric monthly smoothed data
 # where in hemispheric data we plot 2 lines, one for north and one for south
+# There are no labels (no header) in the data,
+# so we will access the columns by their index
 
-def plot_sunspot_data(df_total, df_smoothed, df_hemispheric_total, df_hemispheric_smoothed):
-    fig, axs = plt.subplots(4, 1, figsize=(15, 20), sharex=True)
+def load_data():
+    cols_monthly = ['year', 'month', 'date_in_fraction', 'total_sunspots', 'deviation', 'number_of_observations', 'definitive_provisional']
+    cols_hemispheric = ['year', 'month', 'date_in_fraction', 'north_south', 'north', 'south', 'deviation', 'deviation_north', 'deviation_south', 'observations', 'observations_north', 'observations_south', 'definitive_provisional']
 
-    # Monthly Total Data
-    axs[0].plot(df_total['date_in_fraction'], df_total['total_sunspots'], label='Total Sunspots', color='blue')
-    axs[0].set_title('Monthly Total Sunspots')
-    axs[0].set_ylabel('Total Sunspots')
-    axs[0].legend()
-    axs[0].grid()
+    df_monthly = pd.read_csv('data/SN_m_tot_V2.0.csv', header=None, names=cols_monthly, sep=';')
+    df_monthly_smooth = pd.read_csv('data/SN_ms_tot_V2.0.csv', header=None, names=cols_monthly, sep=';')
+    df_hemispheric = pd.read_csv('data/SN_m_hem_V2.0.csv', header=None, names=cols_hemispheric, sep=';')
+    df_hemispheric_smooth = pd.read_csv('data/SN_ms_hem_V2.0.csv', header=None, names=cols_hemispheric, sep=';')
 
-    # Monthly Smoothed Data
-    axs[1].plot(df_smoothed['date_in_fraction'], df_smoothed['total_sunspots'], label='Smoothed Total Sunspots', color='orange')
-    axs[1].set_title('Monthly Smoothed Sunspots')
-    axs[1].set_ylabel('Smoothed Total Sunspots')
-    axs[1].legend()
-    axs[1].grid()
+    # Convert date_in_fraction to datetime
+    # Date in fraction looks like e.g. 2023.453, 2022.123, etc.
 
-    # Hemispheric Monthly Total Data
-    axs[2].plot(df_hemispheric_total['date_in_fraction'], df_hemispheric_total['north+south'], label='North + South', color='green')
-    axs[2].plot(df_hemispheric_total['date_in_fraction'], df_hemispheric_total['north'], label='North', color='red')
-    axs[2].plot(df_hemispheric_total['date_in_fraction'], df_hemispheric_total['south'], label='South', color='purple')
-    axs[2].set_title('Hemispheric Monthly Total Sunspots')
-    axs[2].set_ylabel('Total Sunspots (North + South)')
-    axs[2].legend()
-    axs[2].grid()
+    df_monthly['date'] = pd.to_datetime(df_monthly['date_in_fraction'].apply(lambda x: f"{int(x)}-{int((x - int(x)) * 12 + 1):02d}-01"))
+    df_monthly_smooth['date'] = pd.to_datetime(df_monthly_smooth['date_in_fraction'].apply(lambda x: f"{int(x)}-{int((x - int(x)) * 12 + 1):02d}-01"))
+    df_hemispheric['date'] = pd.to_datetime(df_hemispheric['date_in_fraction'].apply(lambda x: f"{int(x)}-{int((x - int(x)) * 12 + 1):02d}-01"))
+    df_hemispheric_smooth['date'] = pd.to_datetime(df_hemispheric_smooth['date_in_fraction'].apply(lambda x: f"{int(x)}-{int((x - int(x)) * 12 + 1):02d}-01"))
 
-    # Hemispheric Monthly Smoothed Data
-    axs[3].plot(df_hemispheric_smoothed['date_in_fraction'], df_hemispheric_smoothed['north+south'], label='Smoothed North + South', color='green')
-    axs[3].plot(df_hemispheric_smoothed['date_in_fraction'], df_hemispheric_smoothed['north'], label='Smoothed North', color='red')
-    axs[3].plot(df_hemispheric_smoothed['date_in_fraction'], df_hemispheric_smoothed['south'], label='Smoothed South', color='purple')
-    axs[3].set_title('Hemispheric Monthly Smoothed Sunspots')
-    axs[3].set_ylabel('Smoothed Total Sunspots (North + South)')
-    axs[3].legend()
-    axs[3].grid()
+    # Set date as index
+    df_monthly.set_index('date', inplace=True)
+    df_monthly_smooth.set_index('date', inplace=True)
+    df_hemispheric.set_index('date', inplace=True)
+    df_hemispheric_smooth.set_index('date', inplace=True)
 
-    plt.xlabel('Date in Fraction')
+    # Drop unnecessary rows in total_sunspots data (e.g. rows with -1 in total_sunspots)
+    df_monthly = df_monthly[df_monthly['total_sunspots'] != -1]
+    df_monthly_smooth = df_monthly_smooth[df_monthly_smooth['total_sunspots'] != -1]
+    df_hemispheric = df_hemispheric[df_hemispheric['north_south'] != -1]
+    df_hemispheric_smooth = df_hemispheric_smooth[df_hemispheric_smooth['north_south'] != -1]
+
+    # Remove forst and last 6 rows in df_monthly to have equal length of data in smoothed and non-smoothed data
+    df_monthly = df_monthly.iloc[6:-6]
+
+    return df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth
+
+def plot_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth):
+    plt.figure(figsize=(15, 20))
+
+    # Monthly total data
+    plt.subplot(4, 1, 1)
+    plt.plot(df_monthly.index, df_monthly['total_sunspots'], label='Monthly Total Sunspots', color='blue')
+    plt.grid()
+    plt.legend()
+
+    # Monthly smoothed data
+    plt.subplot(4, 1, 2)
+    plt.plot(df_monthly_smooth.index, df_monthly_smooth['total_sunspots'], label='Monthly Smoothed Sunspots', color='orange')
+    plt.grid()
+    plt.legend()
+    # Hemispheric monthly total data
+    plt.subplot(4, 1, 3)
+    plt.plot(df_hemispheric.index, df_hemispheric['north'], label='Northern Hemisphere', color='red')
+    plt.plot(df_hemispheric.index, df_hemispheric['south'], label='Southern Hemisphere', color='green')
+    plt.grid()
+    plt.legend()
+    # Hemispheric monthly smoothed data
+    plt.subplot(4, 1, 4)
+    plt.plot(df_hemispheric_smooth.index, df_hemispheric_smooth['north'], label='Northern Hemisphere', color='red')
+    plt.plot(df_hemispheric_smooth.index, df_hemispheric_smooth['south'], label='Southern Hemisphere', color='green')
+    plt.grid()
+    plt.legend()
+    plt.tight_layout()  
+    plt.show()
+
+def plot_acf_data(df_monthly):
+
+    from statsmodels.graphics.tsaplots import plot_acf
+
+    fig, ax = plt.subplots(figsize=(15, 6))
+    plot_acf(df_monthly['total_sunspots'], lags=50, ax=ax)
+    ax.set_title('Autocorrelation Function of Monthly Total Sunspots')
+    ax.set_xlabel('Lags')
+    ax.set_ylabel('Autocorrelation')
+    plt.grid()
+    plt.show()
+
+def plot_pacf_data(df_monthly):
+
+    from statsmodels.graphics.tsaplots import plot_pacf
+
+    fig, ax = plt.subplots(figsize=(15, 6))
+    plot_pacf(df_monthly['total_sunspots'], lags=50, ax=ax)
+    ax.set_title('Partial Autocorrelation Function of Monthly Total Sunspots')
+    ax.set_xlabel('Lags')
+    ax.set_ylabel('Partial Autocorrelation')
+    plt.grid()
+    plt.show()
+
+def plot_stl_decomposition(df_monthly):
+
+    from statsmodels.tsa.seasonal import STL
+
+    stl = STL(df_monthly['total_sunspots'])
+    result = stl.fit()
+
+    fig = result.plot()  # bez ax argumenta
+    fig.set_size_inches(20, 10)
+    plt.suptitle('STL Decomposition of Monthly Total Sunspots')
     plt.tight_layout()
     plt.show()
 
-# Load the data
-
-def load_data():
-    # Load the data from CSV files
-    df_total = pd.read_csv('../data/SN_m_tot_V2.0.csv')
-    df_smoothed = pd.read_csv('../data/SN_ms_tot_V2.0.csv')
-    df_hemispheric_total = pd.read_csv('../data/SN_m_hem_V2.0.csv')
-    df_hemispheric_smoothed = pd.read_csv('../data/SN_ms_hem_V2.0.csv')
-
-    # Convert date_in_fraction to datetime for better plotting
-    df_total['date_in_fraction'] = pd.to_datetime(df_total['date_in_fraction'], format='%Y.%m')
-    df_smoothed['date_in_fraction'] = pd.to_datetime(df_smoothed['date_in_fraction'], format='%Y.%m')
-    df_hemispheric_total['date_in_fraction'] = pd.to_datetime(df_hemispheric_total['date_in_fraction'], format='%Y.%m')
-    df_hemispheric_smoothed['date_in_fraction'] = pd.to_datetime(df_hemispheric_smoothed['date_in_fraction'], format='%Y.%m')
-
-    return df_total, df_smoothed, df_hemispheric_total, df_hemispheric_smoothed
-
 def main():
-    # Load the data
-    df_total, df_smoothed, df_hemispheric_total, df_hemispheric_smoothed = load_data()
+    df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth = load_data()
 
-    # Plot the data
-    plot_sunspot_data(df_total, df_smoothed, df_hemispheric_total, df_hemispheric_smoothed)
+    #plot_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
+    #plot_acf_data(df_monthly) 
+    #plot_pacf_data(df_monthly) # not same for stationary and non-stationary data
+
+    # WE USED pacf for analysis of non-stationary data (great choice)
+
+    """
+
+        Why is sunspot data not stationary?
+
+        Sunspot data is not stationary because it exhibits trends and seasonality.
+        Stationarity means that the statistical properties of a time series do not change over time. (check)
+
+        Additive or multiplicative model?
+
+        Additive model would be more appropriate for sunspot data... (not sure, but we will use it for now)
+
+
+
+    """
+
+    # Using STL decomposition to analyze the data
+    plot_stl_decomposition(df_monthly)
+
 
 if __name__ == "__main__":
-    main()
+    main()  
+
+
+    
