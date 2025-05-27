@@ -164,7 +164,7 @@ def plot_stl_decomposition(df_monthly):
 
     from statsmodels.tsa.seasonal import STL
 
-    stl = STL(df_monthly['total_sunspots'])
+    stl = STL(df_monthly['total_sunspots'])  # Using additive model and 13-month seasonality
     result = stl.fit()
 
     fig = result.plot()  # bez ax argumenta
@@ -172,6 +172,55 @@ def plot_stl_decomposition(df_monthly):
     plt.suptitle('STL Decomposition of Monthly Total Sunspots')
     plt.tight_layout()
     plt.show()
+
+def adf_test_stationarity(series):
+    from statsmodels.tsa.stattools import adfuller
+
+    # first we difference the series to make it stationary
+    diff_series = series.diff().dropna()
+    result = adfuller(diff_series)
+    print('ADF Statistic:', result[0])
+    print('p-value:', result[1])
+    print('Critical Values:')
+    for key, value in result[4].items():
+        print(f'  {key}: {value}')
+    if result[1] < 0.05:
+        print("The series is stationary (reject H0)")
+    else:
+        print("The series is non-stationary (fail to reject H0)")
+
+def plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth):
+    plt.figure(figsize=(15, 20))
+
+    # Normalized Monthly total data
+    plt.subplot(4, 1, 1)
+    plt.plot(df_monthly.index, df_monthly['total_sunspots_scaled'], label='Normalized Monthly Total Sunspots', color='blue')
+    plt.grid()
+    plt.legend()
+
+    # Normalized Monthly smoothed data
+    plt.subplot(4, 1, 2)
+    plt.plot(df_monthly_smooth.index, df_monthly_smooth['total_sunspots_scaled'], label='Normalized Monthly Smoothed Sunspots', color='orange')
+    plt.grid()
+    plt.legend()
+
+    # Normalized Hemispheric monthly total data
+    plt.subplot(4, 1, 3)
+    plt.plot(df_hemispheric.index, df_hemispheric['north_scaled'], label='Normalized Northern Hemisphere', color='red')
+    plt.plot(df_hemispheric.index, df_hemispheric['south_scaled'], label='Normalized Southern Hemisphere', color='green')
+    plt.grid()
+    plt.legend()
+
+    # Normalized Hemispheric monthly smoothed data
+    plt.subplot(4, 1, 4)
+    plt.plot(df_hemispheric_smooth.index, df_hemispheric_smooth['north_scaled'], label='Normalized Northern Hemisphere', color='red')
+    plt.plot(df_hemispheric_smooth.index, df_hemispheric_smooth['south_scaled'], label='Normalized Southern Hemisphere', color='green')
+    plt.grid()
+    plt.legend()
+
+    plt.tight_layout()  
+    plt.show()
+
 
 def main():
     df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth = load_data()
@@ -193,12 +242,58 @@ def main():
 
         Additive model would be more appropriate for sunspot data... (not sure, but we will use it for now)
 
+        Trend and seasonality in sunspot data?
+
+        Sunspot data has a long-term trend (increasing/decreasing) and seasonal patterns (e.g. more sunspots during certain months).
+        The trend is not linear, but it can be captured by the model.
+        Seasonality is complex and not constant over time, so it is not easy to capture with simple models.
+        We will use STL decomposition to analyze the data and capture the trend and seasonality.
+        Just for the sake of it...
 
 
     """
 
-    # Using STL decomposition to analyze the data
-    plot_stl_decomposition(df_monthly)
+    #plot_stl_decomposition(df_monthly)
+    #adf_test_stationarity(df_monthly['total_sunspots']) # not sure... (says stationary 100%, but we know it is not)
+
+    # Normalize data using Min-Max scaler 
+
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler()
+    df_monthly['total_sunspots_scaled'] = scaler.fit_transform(df_monthly[['total_sunspots']])
+    df_monthly_smooth['total_sunspots_scaled'] = scaler.fit_transform(df_monthly_smooth[['total_sunspots']])
+    df_hemispheric['north_scaled'] = scaler.fit_transform(df_hemispheric[['north']])
+    df_hemispheric['south_scaled'] = scaler.fit_transform(df_hemispheric[['south']])
+    df_hemispheric_smooth['north_scaled'] = scaler.fit_transform(df_hemispheric_smooth[['north']])
+    df_hemispheric_smooth['south_scaled'] = scaler.fit_transform(df_hemispheric_smooth[['south']])
+
+    # Plot normalized data
+    #plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
+
+    # IMPORTANT!!!:
+    
+    '''
+    
+        Since we have over 200 years of data, which is 3000+ data points, 
+        we will use only the last 1680 data points for training and testing.
+
+        Older data is not relevant for the model, 
+        since it is not able to capture the seasonality and trend in the data.
+        It is only draining the model and making it worse.
+
+        Our Informer model is made to predict up to 120 months ahead.
+    
+    '''
+
+    train_data_monthly = df_monthly_smooth.iloc[-1680:-240]
+    val_data_monthly = df_monthly_smooth.iloc[-240:-120]
+    test_data_monthly = df_monthly_smooth.iloc[-120:]
+
+
+
+
+
+
 
 
 if __name__ == "__main__":
