@@ -49,7 +49,7 @@ The dataset used is the [Sunspots dataset](https://www.kaggle.com/datasets/rober
 - **Install Dependencies**:
    ```bash
    pip install tensorflow pandas numpy matplotlib seaborn
-- **Download Dataset**: Import the Sunspots dataset from [Kaggle](https://www.kaggle.com/datasets/robervalt/sunspots).
+- **Download Dataset**: Import the Sunspots dataset from [Kaggle](https://www.kaggle.com/datasets/robervalt/sunspots) or SILSO database (https://sidc.be)
 - **Run the Notebook**: Use Jupyter Notebook or Google Colab to execute the provided code.
 - **Explore Results**: Review generated plots and MAE metrics for model performance.
 
