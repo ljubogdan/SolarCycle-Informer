@@ -1,20 +1,10 @@
 '''
 
-    For this model, we are using Informer model (Transformer-based model for time series forecasting).
-    Seasolanity is handled by the model itself, so we do not need to add any additional features.
-    Trend is also handled by the model itself.
-
     We tried to use the LSTM model (RNN-based model for time series forecasting), but it did not perform well.
     We tried to use the ARIMA model, no results were obtained.
-    We tried to use the SARIMA model (Seasonal ARIMA-based model for time series forecasting), no results also...
-
-    All thee models were not able to capture the seasonality and trend in the data.
-
     We are working with sunspot data, which is not linear and has a complex seasonality and trend.
 
 '''
-
-# INFORMER MODEL
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -24,6 +14,18 @@ import numpy as np
 import statsmodels.api as sm
 
 '''
+
+    === COLUMNS IN SUNSPOT DAILY TOTAL DATA ===
+
+    year
+    month
+    day
+    date_in_fraction (e.g. 2023-01-01 is 2023.0, 2023-01-02 is 2023.003, etc.)
+    total_sunspots
+    deviation
+    number_of_observations
+    definitive/provisional
+
     === COLUMNS IN SUNSPOT MONTLY TOTAL DATA ===
 
     year
@@ -62,7 +64,6 @@ import statsmodels.api as sm
     FIRST AND LAST 6 MONTHS OF DATA IN SMOOTHED ARE MISSING (-1 in column indicates missing data) 
 
     WE HAVE HEMISPHERIC DATA FROM JANARY 1992 TO APRIL 2025
-
 
 
 '''
@@ -106,8 +107,8 @@ def load_data():
     df_monthly = df_monthly.iloc[6:-6]
 
     # using only monthly data from > 1960 since there is a lot of unreliable data before that
-    df_monthly = df_monthly[df_monthly.index >= '1970-01-01']
-    df_monthly_smooth = df_monthly_smooth[df_monthly_smooth.index >= '1960-01-01']
+    df_monthly = df_monthly[df_monthly.index >= '1800-01-01']
+    df_monthly_smooth = df_monthly_smooth[df_monthly_smooth.index >= '1800-01-01']
 
     return df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth
 
@@ -256,7 +257,7 @@ def main():
 
     """
 
-    #plot_stl_decomposition(df_monthly)
+    plot_stl_decomposition(df_monthly)
     #adf_test_stationarity(df_monthly['total_sunspots']) # not sure... (says stationary 100%, but we know it is not)
 
     
@@ -272,40 +273,26 @@ def main():
     df_hemispheric_smooth['south_scaled'] = scaler.fit_transform(df_hemispheric_smooth[['south']])
 
     # Plot normalized data
-    # plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
+    plot_normalized_data(df_monthly, df_monthly_smooth, df_hemispheric, df_hemispheric_smooth)
 
-    # IMPORTANT!!!:
+    """
     
-    '''
+        This project was orriginally intended to use Informer model for time series forecasting, 
+        but for me it is not clear how to use it for sunspot data.
+
+        For now we will stick to SARIMA model, which is a good choice for time series forecasting.
+
+        Why SARIMA model and not ARIMA model?
+
+        SARIMA (Seasonal Autoregressive Integrated Moving Average) is an extension of ARIMA that supports seasonality.
+        It is a good choice for time series data with seasonal patterns, like sunspot data.
+        ARIMA (Autoregressive Integrated Moving Average) is a good choice for time series data without seasonality.
+
+    """
+
+    ################################################### DAILY DATA ANALYSIS 
+
     
-        Since we have over 200 years of data, which is 3000+ data points, 
-        we will use only the last 350 data points for training and testing.
-
-        Older data is not relevant for the model, 
-        since it is not able to capture the seasonality and trend in the data.
-        It is only draining the model and making it worse.
-    
-    '''
-
-    # Creating input sequences for Informer model
-
-    '''
-
-        What are input sequences for Informer model?
-
-        Input sequences for Informer model are sequences of data points that the model uses to make predictions.
-        The model takes a sequence of data points as input and predicts the next data point in the sequence.
-        The input sequence is a sliding window of data points, where the window size is defined by the model's hyperparameters.
-        The model uses the input sequence to learn the patterns in the data and make predictions.
-
-    '''
-
-    # Defining Informer model
-
-
-
-
-
 
 
 
