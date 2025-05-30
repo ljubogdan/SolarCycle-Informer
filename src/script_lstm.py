@@ -134,20 +134,71 @@ def plot_acf_graph():
     plt.show()
 
 # plot_acf_graph()
+
 """
     As we can see from the ACF graph after k=29 there is no autocorrelation
     Which means this is a time series
 """
 
-# 
+# plotting the pacf
+from statsmodels.graphics.tsaplots import plot_pacf
+def plot_pacf_graph():
+    fig = plt.figure(figsize=(16, 6))
+    plot_pacf(sunspots['number'], lags=30, alpha=0.05, title='Partial Autocorrelation Function of Sunspot Numbers', ax=plt.gca())
+    plt.tight_layout()
+    plt.show()
 
+# plot_pacf_graph()
 
+"""
+    As we can see from the PACF graph after k=7 there is no partial autocorrelation
+    Currently sunspot numbers are not stationary
+    Because we have a trend in the data, and sensonality
+    PACF doesnt eliminate effect of trend and seasonality
 
+    Additive or multiplicative decomposition of time series?
 
+    We will use multiplicative decomposition...
+    But STL requires additive model!!!
 
+    Transform multiplicative model to additive model by taking logarithm of the data
+"""
 
+# removing all rows with number == 0
+sunspots = sunspots[sunspots['number'] > 0].reset_index(drop=True)
 
+sunspots['log_number'] = np.log10(sunspots['number'])
 
+"""
+sunspots['log_number'].plot(figsize=(18, 6), title='Logarithm of Sunspot Numbers', xlabel='Date', ylabel='Log(Sunspot Number)')
+plt.tight_layout()
+plt.show()
+"""
 
+# stl method for decomposition
+import matplotlib.pyplot as plt
+from statsmodels.tsa.seasonal import STL
 
+# STL decomposition of the logarithm of sunspot numbers
+stl = STL(sunspots['log_number'], period=132).fit()
+
+# Plotting components explicitly
+
+"""
+fig, axes = plt.subplots(4, 1, figsize=(16, 8), sharex=True)
+axes[0].plot(sunspots.index, sunspots['log_number'], label='Original', color='blue')
+axes[0].legend(loc='upper left')
+
+axes[1].plot(sunspots.index, stl.trend, label='Trend', color='orange')
+axes[1].legend(loc='upper left')
+
+axes[2].plot(sunspots.index, stl.seasonal, label='Seasonality', color='green')
+axes[2].legend(loc='upper left')
+
+axes[3].plot(sunspots.index, stl.resid, label='Residuals', color='red')
+axes[3].legend(loc='upper left')
+
+plt.tight_layout()
+plt.show()
+"""
 
