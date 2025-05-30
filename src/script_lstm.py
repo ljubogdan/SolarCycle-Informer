@@ -202,3 +202,92 @@ plt.tight_layout()
 plt.show()
 """
 
+"""
+    As we can see there is trend and seasonality in the data
+    Stationarity means that properties such as mean, variance and covariance
+    do not change over time.
+    For predictive models we need to have stationary time series.
+"""
+
+# Checking statioonarity using ADF test
+from statsmodels.tsa.stattools import adfuller
+def adf_test(series):
+    result = adfuller(series)
+    print('ADF Statistic:', result[0])
+    print('p-value:', result[1])
+    print('Critical Values:')
+    # printing wether series is stationary or not
+    if result[1] <= 0.05:
+        print("Series is stationary")
+    else:
+        print("Series is not stationary")
+
+# adf_test(sunspots['number'])
+
+"""
+    Apperantl series is stationary? - but why?
+    ADF test is sometimes not reliable
+    We will use KPSS test to check for stationarity ;)
+
+    KPSS test is a statistical test that checks for stationarity in a time series.
+    The null hypothesis of the KPSS test is that the time series is stationary.
+"""
+
+from statsmodels.tsa.stattools import kpss
+def kpss_test(series):
+    statistic, p_value, lags, critical_values = kpss(series, regression='c')
+    print('KPSS Statistic:', statistic)
+    print('p-value:', p_value)
+    print('Critical Values:')
+    for key, value in critical_values.items():
+        print(f'   {key}: {value}')
+    
+    # printing wether series is stationary or not
+    if p_value <= 0.05:
+        print("Series is not stationary")
+    else:
+        print("Series is stationary")
+
+# kpss_test(sunspots['number'])
+
+"""
+    As we can see from the KPSS test, series is actually stationary
+    For now, we will believe that series is stationary
+    BUT we still see trend in data, and we need to remove it
+    So we will differentiate the data to remove trend
+"""
+
+# removing trend from the data
+sunspots['differentiated'] = sunspots['number'].diff()
+sunspots = sunspots.dropna(subset=['differentiated'])
+
+# adf test again
+# adf_test(sunspots['differentiated'])
+
+# plotting the diff data
+
+def plot_diff():
+    plt.figure(figsize=(18, 6))
+    plt.plot(sunspots['date'], sunspots['differentiated'], label='Differentiated Sunspot Number', color='blue')
+    plt.xlabel('Date')
+    plt.ylabel('Differentiated Sunspot Number')
+    plt.title('Differentiated Sunspot Number Over Time')
+    plt.xticks(rotation=45)
+    plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(12))  # maximum 12 ticks on x-axis
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # format x-axis as Year-Month
+    plt.legend()
+    plt.grid()
+    plt.tight_layout()
+    plt.show()
+
+plot_diff()
+
+# adf test again
+# adf_test(sunspots['differentiated'])
+
+"""
+    As we can see, series is stationary now
+    We can proceed with LSTM model
+"""
+
+
