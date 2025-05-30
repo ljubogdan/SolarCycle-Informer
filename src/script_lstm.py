@@ -6,7 +6,7 @@
     Date: May 2025
 """
 
-DATA_PATH = 'data/SN_m_tot_V2.0.csv'
+DATA_PATH = '/kaggle/input/datasunspots/SN_m_tot_V2.0.csv'
 
 import pandas as pd
 import numpy as np
@@ -257,6 +257,8 @@ def kpss_test(series):
     So we will differentiate the data to remove trend
 """
 
+original = sunspots['number'].iloc[0]
+
 # removing trend from the data
 sunspots['differentiated'] = sunspots['number'].diff()
 sunspots = sunspots.dropna(subset=['differentiated'])
@@ -280,7 +282,7 @@ def plot_diff():
     plt.tight_layout()
     plt.show()
 
-plot_diff()
+# plot_diff()
 
 # adf test again
 # adf_test(sunspots['differentiated'])
@@ -289,5 +291,105 @@ plot_diff()
     As we can see, series is stationary now
     We can proceed with LSTM model
 """
+
+# its time to prepare data for LSTM model
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+from math import sqrt
+
+scaler = MinMaxScaler()
+
+# scaling the data
+split_index = int(len(sunspots) * 0.8)
+train_data = sunspots['differentiated'][:split_index]
+test_data = sunspots['differentiated'][split_index:]
+
+scaler.fit(train_data.values.reshape(-1, 1)) # very important
+
+sunspots['scaled'] = np.nan
+train_scaled = scaler.fit_transform(train_data.values.reshape(-1, 1)).flatten()
+test_scaled = scaler.transform(test_data.values.reshape(-1, 1)).flatten()
+
+def create_sequences(data, window_size):
+    X, y = [], []
+    for i in range(len(data) - window_size):
+        X.append(data[i:i+window_size])
+        y.append(data[i+window_size])
+    return np.array(X), np.array(y)
+
+window_size = 30  
+
+X_train, y_train = create_sequences(train_scaled, window_size)
+X_test, y_test = create_sequences(test_scaled, window_size)
+
+# reshaping data for LSTM
+X_train = X_train.reshape((X_train.shape[0], X_train.shape[1], 1))
+X_test = X_test.reshape((X_test.shape[0], X_test.shape[1], 1))
+
+# importing necessary libraries for LSTM
+from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout, Activation
+
+model = Sequential()
+model.add(LSTM(50, input_shape=(window_size, 1), return_sequences=True))
+model.add(Activation('tanh'))
+
+model.add(LSTM(100, return_sequences=True))
+model.add(Activation('tanh'))
+model.add(Dropout(0.3))
+
+model.add(LSTM(100))
+model.add(Activation('tanh'))
+
+model.add(Dense(50))
+model.add(Dropout(0.3))
+model.add(Activation('linear'))
+
+model.add(Dense(1))
+model.compile(loss='mse', optimizer='adam')
+model.summary()
+
+epochs_hist = model.fit(X_train, y_train, epochs=100, batch_size=20, validation_split=0.2)
+
+plt.plot(epochs_hist.history['loss'])
+plt.plot(epochs_hist.history['val_loss'])
+plt.title('Model Loss Progress During Training')
+plt.xlabel('Epoch')
+plt.ylabel('Training and Validation Loss')
+plt.legend(['Training Loss', 'Validation Loss'])
+
+y_predict = model.predict(X_test)
+y_predict_orig = scaler.inverse_transform(y_predict.reshape(-1, 1)).flatten()
+y_test_orig = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
+
+"""
+    y_predict_orig and y_test_orig are differentiated values
+    We need to add the last value of the training data to the first value of the test data
+    to get the original values
+"""
+
+
+
+RMSE = float(format(np.sqrt(mean_squared_error(y_test_orig, y_predict_orig)),'.3f'))
+MSE = mean_squared_error(y_test_orig, y_predict_orig)
+MAE = mean_absolute_error(y_test_orig, y_predict_orig)
+r2 = r2_score(y_test_orig, y_predict_orig)
+
+print('RMSE =',RMSE, '\nMSE =',MSE, '\nMAE =',MAE, '\nR2 =', r2)
+
+plt.figure(figsize=(10,6))
+plt.plot(sunspots['date'][split_index + window_size:], y_test_orig, label='True Values', color='blue')
+plt.plot(sunspots['date'][split_index + window_size:], y_predict_orig, label='Predicted Values', color='red')
+plt.xlabel('Date')
+plt.ylabel('Sunspot Number')
+plt.title('Sunspot Number Prediction using LSTM')
+plt.xticks(rotation=45)
+plt.gca().xaxis.set_major_locator(ticker.MaxNLocator(12))  # maximum 12 ticks on x-axis
+plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))  # format x-axis as Year-Month
+plt.legend()
+plt.grid()
+plt.tight_layout()
+plt.show()
 
 
