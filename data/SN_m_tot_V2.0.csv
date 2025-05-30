@@ -1,3 +1,4 @@
+year;month;decimal_year;number;deviation;observations;flag
 1749;01;1749.042;  96.7; -1.0;   -1;1
 1749;02;1749.123; 104.3; -1.0;   -1;1
 1749;03;1749.204; 116.7; -1.0;   -1;1
