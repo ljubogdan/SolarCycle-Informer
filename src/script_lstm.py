@@ -260,7 +260,7 @@ def kpss_test(series):
 original = sunspots['number'].iloc[0]
 
 # removing trend from the data
-sunspots['differentiated'] = sunspots['number'].diff()
+sunspots['differentiated'] = sunspots['number'] # removed .diff() (pretend it is differentiated)
 sunspots = sunspots.dropna(subset=['differentiated'])
 
 # adf test again
@@ -305,10 +305,9 @@ split_index = int(len(sunspots) * 0.8)
 train_data = sunspots['differentiated'][:split_index]
 test_data = sunspots['differentiated'][split_index:]
 
-scaler.fit(train_data.values.reshape(-1, 1)) # very important
-
 sunspots['scaled'] = np.nan
-train_scaled = scaler.fit_transform(train_data.values.reshape(-1, 1)).flatten()
+scaler.fit(train_data.values.reshape(-1, 1))
+train_scaled = scaler.transform(train_data.values.reshape(-1, 1)).flatten()
 test_scaled = scaler.transform(test_data.values.reshape(-1, 1)).flatten()
 
 def create_sequences(data, window_size):
@@ -368,8 +367,6 @@ y_test_orig = scaler.inverse_transform(y_test.reshape(-1, 1)).flatten()
     We need to add the last value of the training data to the first value of the test data
     to get the original values
 """
-
-
 
 RMSE = float(format(np.sqrt(mean_squared_error(y_test_orig, y_predict_orig)),'.3f'))
 MSE = mean_squared_error(y_test_orig, y_predict_orig)
